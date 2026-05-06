@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  groceryparser:
+    build: .
+    container_name: groceryparser
+    restart: always
+    volumes:
+      - ./config.json:/app/config.json
+      - ./data:/app/data
+    environment:
+      - TZ=Europe/Berlin
+
+  enricher:
+    build: .
+    container_name: paperless_enricher
+    restart: always
+    command: ["python", "paperless_enricher.py", "--daemon"]
+    volumes:
+      - ./config.json:/app/config.json
+      - ./data:/app/data
+    environment:
+      - TZ=Europe/Berlin

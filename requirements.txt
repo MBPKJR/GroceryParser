@@ -1,0 +1,4 @@
+requests
+pypdf
+beautifulsoup4
+paramiko

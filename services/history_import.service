@@ -1,0 +1,14 @@
+[Unit]
+Description=Paperless History Import Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/app
+ExecStart=/app/venv/bin/python3 history_import.py
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

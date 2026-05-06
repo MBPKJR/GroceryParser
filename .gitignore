@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.log
+config.json
+history_processed.json
+enricher_state.json
+learned_companies.json
+processed_emails.json
+receipt_*.pdf
+temp_receipt.txt
+tmp_*.py
+*.sh
+.DS_Store

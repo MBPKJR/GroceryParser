@@ -1,0 +1,24 @@
+{
+  "emails": [
+    {
+      "username": "your-email@gmail.com",
+      "app_password": "your-app-password",
+      "imap_server": "imap.gmail.com",
+      "imap_port": 993,
+      "folder": "INBOX"
+    }
+  ],
+  "home_assistant": {
+    "url": "http://homeassistant.local:8123",
+    "token": "your-long-lived-access-token",
+    "sensors": {
+      "groceries": "sensor.grocery_expenses",
+      "misc": "sensor.misc_expenses"
+    }
+  },
+  "paperless": {
+    "enabled": true,
+    "url": "http://paperless.local:8000",
+    "token": "your-paperless-api-token"
+  }
+}

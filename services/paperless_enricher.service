@@ -1,0 +1,14 @@
+[Unit]
+Description=Paperless Metadaten-Enricher (Daemon)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/app
+ExecStart=/app/venv/bin/python3 paperless_enricher.py --daemon
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
