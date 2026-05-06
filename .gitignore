@@ -10,4 +10,5 @@ receipt_*.pdf
 temp_receipt.txt
 tmp_*.py
 *.sh
+.tmp.driveupload/
 .DS_Store

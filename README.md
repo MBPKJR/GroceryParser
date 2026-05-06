@@ -63,5 +63,9 @@ Die einfachste Methode für Docker-Nutzer:
 ## 🎓 Lern-Funktion
 Der `paperless_enricher` speichert erkannte Muster in `learned_companies.json`. Wenn du in Paperless einen Korrespondenten manuell änderst, erkennt der Enricher dies beim nächsten Lauf und merkt sich das neue Muster für zukünftige Dokumente automatisch.
 
+## ⚖️ Lizenz
+
+Dieses Projekt ist unter der [MIT License](LICENSE) lizenziert. Du kannst es frei verwenden, kopieren und modifizieren.
+
 ---
-*Entwickelt für den Einsatz auf Proxmox LXC Containern.*
+*Honors to Jonny's idea. Entwickelt für den Einsatz auf Proxmox LXC Containern.*
