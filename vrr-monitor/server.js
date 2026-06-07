@@ -298,6 +298,26 @@ app.get('/api/departures', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/trip?id=TripID
+ * Fetches full trip details (itinerary/stopovers) for the given Trip ID.
+ */
+app.get('/api/trip', async (req, res) => {
+  const tripId = String(req.query.id || '').trim();
+  if (!tripId) {
+    return res.status(400).json({ error: 'Trip ID (id) parameter is required' });
+  }
+
+  try {
+    const tripResult = await hafas.trip(tripId, { stopovers: true });
+    const tripDetails = tripResult.trip || tripResult;
+    res.json(tripDetails);
+  } catch (error) {
+    console.error(`Error fetching trip ${tripId}:`, error);
+    res.status(500).json({ error: 'Failed to fetch trip details from HAFAS API' });
+  }
+});
+
 // Start the server
 app.listen(PORT, HOST, () => {
   console.log(`====================================================`);

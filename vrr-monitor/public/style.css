@@ -1,32 +1,83 @@
 /* Design Tokens & Theme Variables */
 :root {
-  --bg-color: #080c14;
-  --card-bg: rgba(17, 25, 40, 0.65);
-  --card-border: rgba(255, 255, 255, 0.08);
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  
-  /* Primary Glowing Accents */
-  --accent-primary: #10b981; /* VRR Green */
-  --accent-glow: rgba(16, 185, 129, 0.15);
-  --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --secondary-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  
-  /* Departure Status Colors */
-  --status-ontime: #10b981;
-  --status-delay: #ef4444;
-  --status-cancelled: #6b7280;
-  
   /* Fonts */
   --font-family: 'Outfit', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   
-  /* Shadow & Radius */
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Radii (smaller, sharper, not generic AI rounded corners) */
+  --radius-lg: 8px;
+  --radius-md: 6px;
+  --radius-sm: 4px;
+  
+  --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 1. Theme: Slate (Default Premium Dark) */
+body.theme-slate {
+  --bg-color: #0b0f19;
+  --card-bg: #111827;
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --text-muted: #4b5563;
+  --accent-primary: #10b981; /* Emerald Green */
+  --accent-glow: rgba(16, 185, 129, 0.1);
+  --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --status-ontime: #10b981;
+  --status-delay: #ef4444;
+  --status-cancelled: #4b5563;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 2. Theme: Amber (Minimal Terminal) */
+body.theme-amber {
+  --bg-color: #000000;
+  --card-bg: #000000;
+  --card-border: #222222;
+  --text-primary: #f59e0b; /* Amber */
+  --text-secondary: #d97706;
+  --text-muted: #78350f;
+  --accent-primary: #f59e0b;
+  --accent-glow: rgba(245, 158, 11, 0.08);
+  --primary-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  --status-ontime: #f59e0b;
+  --status-delay: #ef4444;
+  --status-cancelled: #78350f;
+  --card-shadow: none;
+}
+
+/* 3. Theme: Orange (Transit Flat) */
+body.theme-orange {
+  --bg-color: #0c0e12;
+  --card-bg: #161a22;
+  --card-border: #262c3a;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --text-muted: #4b5563;
+  --accent-primary: #ff5f00; /* Transit Orange */
+  --accent-glow: rgba(255, 95, 0, 0.1);
+  --primary-gradient: linear-gradient(135deg, #ff5f00 0%, #cc4c00 100%);
+  --status-ontime: #10b981;
+  --status-delay: #ef4444;
+  --status-cancelled: #4b5563;
+  --card-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+/* 4. Theme: Ice (Nordic Clean) */
+body.theme-ice {
+  --bg-color: #0d1117;
+  --card-bg: #161b22;
+  --card-border: #30363d;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+  --accent-primary: #58a6ff; /* Ice Blue */
+  --accent-glow: rgba(88, 166, 255, 0.1);
+  --primary-gradient: linear-gradient(135deg, #58a6ff 0%, #1f6feb 100%);
+  --status-ontime: #58a6ff;
+  --status-delay: #f85149;
+  --status-cancelled: #484f58;
+  --card-shadow: none;
 }
 
 /* Base resets & styles */
@@ -96,6 +147,35 @@ body {
 /* Header Styling */
 .app-header {
   margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.theme-toggle-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--accent-glow);
+  border-color: var(--accent-primary);
+  transform: scale(1.05);
+}
+
+.theme-toggle-btn i,
+.theme-toggle-btn svg {
+  width: 20px;
+  height: 20px;
 }
 
 .header-logo {
@@ -502,23 +582,39 @@ body {
   gap: 0.6rem;
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .departure-row {
   display: grid;
-  grid-template-columns: 70px 1fr auto;
+  grid-template-columns: 75px 1fr auto;
   align-items: center;
-  gap: 1rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem 1rem;
+  gap: 1.25rem;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1.1rem;
   cursor: pointer;
   transition: var(--transition-smooth);
+  
+  /* Staggered entrance animation */
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
 }
 
 .departure-row:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.08);
-  transform: translateX(3px);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--accent-primary);
+  transform: scale(1.01);
+  box-shadow: var(--card-shadow);
 }
 
 /* Line Badges with tailored transit coloring */
@@ -909,6 +1005,150 @@ body {
   font-size: 0.78rem;
   color: var(--text-primary);
   font-style: italic;
+}
+
+/* Vertical Itinerary Timeline */
+.itinerary-timeline {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.4rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+}
+
+.timeline-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+  padding-left: 0.5rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.timeline-stop {
+  display: grid;
+  grid-template-columns: 50px 24px 1fr;
+  align-items: center;
+  min-height: 28px;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+}
+
+.timeline-stop.passed {
+  opacity: 0.45;
+}
+
+.timeline-stop.active-stop {
+  font-weight: 700;
+}
+
+.timeline-stop.active-stop .station-column {
+  color: var(--accent-primary);
+}
+
+.time-column {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-align: right;
+  padding-right: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.node-column {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.node-circle {
+  width: 7px;
+  height: 7px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  z-index: 2;
+}
+
+.timeline-stop.active-stop .node-circle {
+  background: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  width: 9px;
+  height: 9px;
+}
+
+.node-line {
+  position: absolute;
+  top: 50%;
+  bottom: -50%;
+  left: 50%;
+  width: 1px;
+  background: var(--card-border);
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.timeline-stop:last-child .node-line {
+  display: none;
+}
+
+.station-column {
+  padding-left: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 0.5rem;
+}
+
+.timeline-delay-tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.05rem 0.25rem;
+  border-radius: var(--radius-sm);
+  margin-left: 0.5rem;
+}
+
+.timeline-delay-tag.delayed {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--status-delay);
+}
+
+.timeline-delay-tag.ontime {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--status-ontime);
+}
+
+.timeline-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1rem 0;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.timeline-loader .spinner {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--card-border);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 @keyframes slideDown {

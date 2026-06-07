@@ -251,6 +251,86 @@ function renderAutocomplete(locations) {
   autocompleteList.style.display = 'block';
 }
 
+async function loadItinerary(tripId, container) {
+  if (container.querySelector('.itinerary-timeline')) return;
+
+  try {
+    const response = await fetch(`/api/trip?id=${encodeURIComponent(tripId)}`);
+    if (!response.ok) throw new Error('Trip details failed');
+    const trip = await response.json();
+    
+    if (!trip.stopovers || trip.stopovers.length === 0) {
+      container.innerHTML = '<div class="timeline-loader"><i data-lucide="info"></i><span>Kein Fahrtverlauf verfügbar</span></div>';
+      lucide.createIcons({ el: container });
+      return;
+    }
+
+    let html = `
+      <div class="itinerary-timeline">
+        <div class="timeline-title">
+          <i data-lucide="milestone"></i>
+          <span>Fahrtverlauf: ${trip.line?.name || ''}</span>
+        </div>
+    `;
+
+    const activeIndex = trip.stopovers.findIndex(s => {
+      const stopIdStr = String(s.stop?.id || '');
+      const activeIdStr = String(activeStopId || '');
+      return stopIdStr === activeIdStr || sanitizeStationName(s.stop?.name) === sanitizeStationName(activeStopName);
+    });
+
+    trip.stopovers.forEach((s, idx) => {
+      const isCurrent = idx === activeIndex;
+      const isPassed = activeIndex !== -1 && idx < activeIndex;
+      
+      const timeStr = s.departure || s.arrival || s.plannedDeparture || s.plannedArrival;
+      const plannedTimeStr = s.plannedDeparture || s.plannedArrival;
+      
+      const displayTime = timeStr ? formatTime(timeStr) : '--:--';
+      
+      let delayHtml = '';
+      let delayMin = 0;
+      if (s.departureDelay !== null && s.departureDelay !== undefined) {
+        delayMin = Math.round(s.departureDelay / 60);
+      } else if (s.arrivalDelay !== null && s.arrivalDelay !== undefined) {
+        delayMin = Math.round(s.arrivalDelay / 60);
+      } else if (timeStr && plannedTimeStr) {
+        delayMin = Math.round((new Date(timeStr) - new Date(plannedTimeStr)) / 60000);
+      }
+
+      if (delayMin > 0) {
+        delayHtml = `<span class="timeline-delay-tag delayed">+${delayMin}</span>`;
+      } else if (delayMin === 0 && (s.departureDelay !== null || s.arrivalDelay !== null)) {
+        delayHtml = `<span class="timeline-delay-tag ontime">pünktlich</span>`;
+      }
+
+      const stopName = sanitizeStationName(s.stop?.name);
+
+      html += `
+        <div class="timeline-stop ${isPassed ? 'passed' : ''} ${isCurrent ? 'active-stop' : ''}">
+          <div class="time-column">${displayTime}</div>
+          <div class="node-column">
+            <div class="node-circle"></div>
+            <div class="node-line"></div>
+          </div>
+          <div class="station-column">
+            <span>${stopName}</span>
+            ${delayHtml}
+          </div>
+        </div>
+      `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+    lucide.createIcons({ el: container });
+  } catch (err) {
+    console.error('Error loading itinerary:', err);
+    container.innerHTML = '<div class="timeline-loader"><i data-lucide="alert-triangle"></i><span>Fahrtverlauf konnte nicht geladen werden</span></div>';
+    lucide.createIcons({ el: container });
+  }
+}
+
 function renderDepartures(departures) {
   departuresLoader.style.display = 'none';
   departuresList.innerHTML = '';
@@ -282,9 +362,10 @@ function renderDepartures(departures) {
 
   departuresEmpty.style.display = 'none';
 
-  filteredList.forEach(dep => {
+  filteredList.forEach((dep, idx) => {
     const row = document.createElement('div');
     row.className = 'departure-row';
+    row.style.setProperty('--i', idx);
 
     const lineName = dep.line ? (dep.line.name || '--') : '--';
     const badgeClass = getTransitBadgeClass(dep.line);
@@ -354,6 +435,12 @@ function renderDepartures(departures) {
           <span>${operatorName}${fahrtNr ? ` · ${fahrtNr}` : ''}</span>
         </div>
         ${remarksHtml}
+        <div class="itinerary-container">
+          <div class="timeline-loader">
+            <div class="spinner"></div>
+            <span>Lade Fahrtverlauf...</span>
+          </div>
+        </div>
       </div>
     `;
 
@@ -362,7 +449,18 @@ function renderDepartures(departures) {
       if (details) {
         const isHidden = details.style.display === 'none';
         details.style.display = isHidden ? 'flex' : 'none';
-        if (isHidden) lucide.createIcons({ el: details });
+        if (isHidden) {
+          lucide.createIcons({ el: details });
+          const itineraryContainer = details.querySelector('.itinerary-container');
+          if (itineraryContainer) {
+            if (dep.tripId) {
+              loadItinerary(dep.tripId, itineraryContainer);
+            } else {
+              itineraryContainer.innerHTML = '<div class="timeline-loader"><i data-lucide="info"></i><span>Kein Fahrtverlauf verfügbar</span></div>';
+              lucide.createIcons({ el: itineraryContainer });
+            }
+          }
+        }
       }
     });
 
@@ -579,6 +677,28 @@ if (filterBar) {
 }
 
 refreshBtn.addEventListener('click', fetchDepartures);
+
+// Theme Manager
+const themes = ['theme-slate', 'theme-amber', 'theme-orange', 'theme-ice'];
+let currentTheme = localStorage.getItem('vrr_theme') || 'theme-slate';
+
+function applyTheme(theme) {
+  themes.forEach(t => document.body.classList.remove(t));
+  document.body.classList.add(theme);
+  localStorage.setItem('vrr_theme', theme);
+  currentTheme = theme;
+}
+
+// Initial application
+applyTheme(currentTheme);
+
+const themeBtn = document.getElementById('theme-btn');
+if (themeBtn) {
+  themeBtn.addEventListener('click', () => {
+    const nextIdx = (themes.indexOf(currentTheme) + 1) % themes.length;
+    applyTheme(themes[nextIdx]);
+  });
+}
 
 // Init
 renderFavorites();
