@@ -4,80 +4,88 @@
   --font-family: 'Outfit', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   
-  /* Radii (smaller, sharper, not generic AI rounded corners) */
-  --radius-lg: 8px;
-  --radius-md: 6px;
-  --radius-sm: 4px;
+  /* Radii (balanced, premium, not sharp boxy terminal corners) */
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
   
-  --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 1. Theme: Slate (Default Premium Dark) */
+/* 1. Theme: Slate (Default Premium Dark Glass) */
 body.theme-slate {
-  --bg-color: #0b0f19;
-  --card-bg: #111827;
+  --bg-color: #080c14;
+  --card-bg: rgba(17, 25, 40, 0.65);
   --card-border: rgba(255, 255, 255, 0.08);
-  --text-primary: #f9fafb;
+  --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
   --text-muted: #4b5563;
   --accent-primary: #10b981; /* Emerald Green */
-  --accent-glow: rgba(16, 185, 129, 0.1);
+  --accent-glow: rgba(16, 185, 129, 0.15);
   --primary-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
   --status-ontime: #10b981;
   --status-delay: #ef4444;
   --status-cancelled: #4b5563;
-  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glow-1: rgba(16, 185, 129, 0.15);
+  --glow-2: rgba(59, 130, 246, 0.15);
 }
 
-/* 2. Theme: Amber (Minimal Terminal) */
+/* 2. Theme: Amber (Minimal Terminal Glass) */
 body.theme-amber {
   --bg-color: #000000;
-  --card-bg: #000000;
-  --card-border: #222222;
+  --card-bg: rgba(13, 13, 13, 0.7);
+  --card-border: rgba(245, 158, 11, 0.2);
   --text-primary: #f59e0b; /* Amber */
   --text-secondary: #d97706;
   --text-muted: #78350f;
   --accent-primary: #f59e0b;
-  --accent-glow: rgba(245, 158, 11, 0.08);
+  --accent-glow: rgba(245, 158, 11, 0.15);
   --primary-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   --status-ontime: #f59e0b;
   --status-delay: #ef4444;
   --status-cancelled: #78350f;
-  --card-shadow: none;
+  --card-shadow: 0 8px 32px 0 rgba(245, 158, 11, 0.05);
+  --glow-1: rgba(245, 158, 11, 0.12);
+  --glow-2: rgba(217, 119, 6, 0.08);
 }
 
-/* 3. Theme: Orange (Transit Flat) */
+/* 3. Theme: Orange (Transit Flat Glass) */
 body.theme-orange {
-  --bg-color: #0c0e12;
-  --card-bg: #161a22;
-  --card-border: #262c3a;
+  --bg-color: #08090c;
+  --card-bg: rgba(22, 26, 34, 0.7);
+  --card-border: rgba(255, 95, 0, 0.18);
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
   --text-muted: #4b5563;
   --accent-primary: #ff5f00; /* Transit Orange */
-  --accent-glow: rgba(255, 95, 0, 0.1);
+  --accent-glow: rgba(255, 95, 0, 0.15);
   --primary-gradient: linear-gradient(135deg, #ff5f00 0%, #cc4c00 100%);
   --status-ontime: #10b981;
   --status-delay: #ef4444;
   --status-cancelled: #4b5563;
-  --card-shadow: 0 4px 15px rgba(0,0,0,0.4);
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+  --glow-1: rgba(255, 95, 0, 0.12);
+  --glow-2: rgba(139, 92, 246, 0.1);
 }
 
-/* 4. Theme: Ice (Nordic Clean) */
+/* 4. Theme: Ice (Nordic Clean Glass) */
 body.theme-ice {
-  --bg-color: #0d1117;
-  --card-bg: #161b22;
-  --card-border: #30363d;
+  --bg-color: #0b0f17;
+  --card-bg: rgba(22, 27, 34, 0.7);
+  --card-border: rgba(88, 166, 255, 0.18);
   --text-primary: #c9d1d9;
   --text-secondary: #8b949e;
   --text-muted: #484f58;
   --accent-primary: #58a6ff; /* Ice Blue */
-  --accent-glow: rgba(88, 166, 255, 0.1);
+  --accent-glow: rgba(88, 166, 255, 0.15);
   --primary-gradient: linear-gradient(135deg, #58a6ff 0%, #1f6feb 100%);
   --status-ontime: #58a6ff;
   --status-delay: #f85149;
   --status-cancelled: #484f58;
-  --card-shadow: none;
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --glow-1: rgba(88, 166, 255, 0.12);
+  --glow-2: rgba(56, 189, 248, 0.1);
 }
 
 /* Base resets & styles */
@@ -110,11 +118,21 @@ body {
   pointer-events: none;
 }
 
+@keyframes floatGlow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6%, 4%) scale(1.05);
+  }
+}
+
 .glow-sphere {
   position: absolute;
   border-radius: 50%;
-  filter: blur(150px);
-  opacity: 0.12;
+  filter: blur(140px);
+  opacity: 0.15;
+  pointer-events: none;
 }
 
 .glow-sphere-1 {
@@ -122,7 +140,8 @@ body {
   right: -10%;
   width: 50vw;
   height: 50vw;
-  background: radial-gradient(circle, #10b981 0%, transparent 70%);
+  background: radial-gradient(circle, var(--glow-1, rgba(16, 185, 129, 0.15)) 0%, transparent 70%);
+  animation: floatGlow 12s ease-in-out infinite alternate;
 }
 
 .glow-sphere-2 {
@@ -130,7 +149,8 @@ body {
   left: -10%;
   width: 60vw;
   height: 60vw;
-  background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+  background: radial-gradient(circle, var(--glow-2, rgba(59, 130, 246, 0.15)) 0%, transparent 70%);
+  animation: floatGlow 16s ease-in-out infinite alternate-reverse;
 }
 
 /* App Container Layout */
@@ -598,8 +618,8 @@ body {
   grid-template-columns: 75px 1fr auto;
   align-items: center;
   gap: 1.25rem;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.045);
   border-radius: var(--radius-lg);
   padding: 0.9rem 1.1rem;
   cursor: pointer;
@@ -611,10 +631,10 @@ body {
 }
 
 .departure-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.035);
   border-color: var(--accent-primary);
-  transform: scale(1.01);
-  box-shadow: var(--card-shadow);
+  transform: scale(1.008);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 /* Line Badges with tailored transit coloring */
@@ -622,34 +642,45 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.4rem 0.6rem;
+  padding: 0.35rem 0.6rem;
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-align: center;
-  color: #fff;
   text-transform: uppercase;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 /* Specific transit line types styling */
 .badge-sbahn {
-  background-color: #007a33; /* S-Bahn Green */
+  background: rgba(0, 122, 51, 0.12);
+  border: 1px solid rgba(0, 122, 51, 0.45);
+  color: #2ecc71;
 }
 
 .badge-ubahn {
-  background-color: #00509e; /* U-Bahn Blue */
+  background: rgba(0, 80, 158, 0.12);
+  border: 1px solid rgba(0, 80, 158, 0.45);
+  color: #3498db;
 }
 
 .badge-tram {
-  background-color: #d1121d; /* Tram Red */
+  background: rgba(209, 18, 29, 0.12);
+  border: 1px solid rgba(209, 18, 29, 0.45);
+  color: #ff7675;
 }
 
 .badge-bus {
-  background-color: #e67e22; /* Bus Orange */
+  background: rgba(230, 126, 34, 0.12);
+  border: 1px solid rgba(230, 126, 34, 0.45);
+  color: #f39c12;
 }
 
 .badge-train {
-  background-color: #7f8c8d; /* Generic Regional Train */
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #c9d1d9;
 }
 
 /* Destination and routing details */
@@ -1167,15 +1198,17 @@ body {
  * ------------------------------------------------------------- */
 @media (prefers-color-scheme: light) {
   :root {
-    --bg-color: #f3f4f6; /* Modern light gray background */
-    --card-bg: rgba(255, 255, 255, 0.75); /* Clean white glass */
+    --bg-color: #f3f4f6;
+    --card-bg: rgba(255, 255, 255, 0.75);
     --card-border: rgba(0, 0, 0, 0.06);
-    --text-primary: #111827; /* Deep slate dark gray */
-    --text-secondary: #4b5563; /* Medium dark gray */
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
     --text-muted: #9ca3af;
     
     --accent-glow: rgba(16, 185, 129, 0.06);
     --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.06);
+    --glow-1: rgba(16, 185, 129, 0.04);
+    --glow-2: rgba(59, 130, 246, 0.04);
   }
   
   body {
