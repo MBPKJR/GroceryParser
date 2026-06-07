@@ -2,17 +2,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies if needed (e.g. for pandas/numpy)
 RUN apt-get update && apt-get install -y \
-    gcc \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+
+
+# Copy application code
 COPY . .
 
-# Run the main script by default
-CMD ["python", "main.py", "--daemon"]
+# Create necessary directories
+RUN mkdir -p downloads
+
+# Port for the web server
+EXPOSE 8080
+
+CMD ["python", "main_roster.py"]

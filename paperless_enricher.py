@@ -13,7 +13,11 @@ Features:
 
 import os, sys, re, time, json, tempfile
 import requests
+import socket
 from pypdf import PdfReader
+
+# Set global socket timeout
+socket.setdefaulttimeout(30)
 
 # ── Konfiguration ──────────────────────────────────────────────────────────────
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
@@ -131,12 +135,62 @@ def save_learned(db):
     with open(LEARN_FILE, 'w', encoding='utf-8') as f:
         json.dump(db, f, ensure_ascii=False, indent=2)
 
+IGNORED_WORDS = {
+    # German salutations & forms
+    'herr', 'herrn', 'frau', 'dr', 'prof', 'dipl', 'ing',
+    # German articles & prepositions
+    'der', 'die', 'das', 'dem', 'den', 'des', 'ein', 'eine', 'einer', 'eines', 'einem', 'einen',
+    'in', 'im', 'an', 'am', 'von', 'vom', 'zu', 'zur', 'zum', 'mit', 'für', 'fur', 'und', 'oder',
+    # English articles & prepositions
+    'the', 'a', 'an', 'of', 'to', 'for', 'with', 'on', 'at', 'by', 'and', 'or', 'in',
+    # User's own name & common first names (to avoid learning them as companies)
+    'marius', 'koerbes', 'körbes', 'peter', 'jürgen', 'juergen', 'christian', 'thomas', 'michael'
+}
+
+GENERIC_WORDS = {
+    'finanzamt', 'stadt', 'kanzlei', 'fahrschule', 'apotheke', 'arzt', 'praxis', 'amt', 'rechnung', 
+    'bestellung', 'original', 'durchschrift', 'lieferadresse', 'vertrag', 'service', 'kunden', 
+    'kundenservice', 'online', 'ticket', 'buchung', 'beleg', 'werkseinstellungen', 'bitlocker', 
+    'testzentrum', 'meldebescheinigung', 'unbefristeter', 'buchungsnummer', 'kennnummerder', 'mandant'
+}
+
+def clean_company_name(name):
+    # Remove common suffixes
+    name = re.sub(r'\b(gmbh|ag|e\.v\.|co\.|kg|ltd|inc|unternehmensgruppe\*?)\b', '', name, flags=re.IGNORECASE)
+    # Split and clean words
+    raw_words = [w.strip(' \t\n\r"\'.,:;()[]{}*&-') for w in name.lower().split()]
+    raw_words = [w for w in raw_words if w]
+    
+    # OCR garbage check: if too many single letter words, ignore it
+    single_letters = sum(1 for w in raw_words if len(w) == 1)
+    multi_letters = sum(1 for w in raw_words if len(w) > 1)
+    if single_letters >= 3 and single_letters >= multi_letters:
+        return []
+        
+    words = [w for w in raw_words if len(w) > 1]
+    return [w for w in words if w not in IGNORED_WORDS]
+
 def learn_company(company_name, learned_db):
     """Speichert Firma als lernbares Regex-Pattern."""
-    if not company_name or company_name in ('Unbekannter Korrespondent',):
+    if not company_name or company_name.strip() in ('Unbekannter Korrespondent', 'Unbekannt'):
         return
-    first_word = re.escape(company_name.lower().split()[0])
-    pattern = rf'\b{first_word}\b'
+        
+    words = clean_company_name(company_name)
+    if not words:
+        return
+        
+    first_word = words[0]
+    if first_word in GENERIC_WORDS:
+        if len(words) >= 2:
+            pattern = f"\\b{re.escape(words[0])}\\s+{re.escape(words[1])}\\b"
+        else:
+            return # Too generic for a single-word pattern
+    else:
+        if len(words) >= 2:
+            pattern = f"\\b{re.escape(words[0])}\\s+{re.escape(words[1])}\\b"
+        else:
+            pattern = f"\\b{re.escape(words[0])}\\b"
+            
     if pattern not in learned_db and company_name not in learned_db.values():
         learned_db[pattern] = company_name
         save_learned(learned_db)
@@ -292,6 +346,21 @@ class PaperlessAPI:
     def patch_document(self, doc_id, payload):
         return self.patch(f'/api/documents/{doc_id}/', payload)
 
+    def upload_document(self, file_path, title, tag_ids=None):
+        endpoint = f"{self.base}/api/documents/post_document/"
+        data = {"title": title}
+        if tag_ids:
+            data["tags"] = tag_ids
+            
+        try:
+            with open(file_path, "rb") as f:
+                files = {"document": (os.path.basename(file_path), f)}
+                r = requests.post(endpoint, headers=self.h, data=data, files=files, timeout=30)
+            return r.status_code in (200, 201, 202)
+        except Exception as e:
+            log(f"Fehler beim Hochladen des Dokuments: {e}")
+            return False
+
 
 # ── Feedback-Loop: manuelle Korrekturen erkennen ───────────────────────────────
 def check_for_manual_corrections(api, state, learned_db, correspondent_map):
@@ -332,6 +401,169 @@ def check_for_manual_corrections(api, state, learned_db, correspondent_map):
     return corrections
 
 
+# ── Monatlicher Haushaltsbericht & Duplikaterkennung ───────────────────────────
+def check_and_generate_monthly_report(api, state, correspondent_map):
+    """
+    Prüft, ob für den vergangenen Monat bereits ein Bericht erstellt wurde.
+    Falls nicht, wird er generiert und hochgeladen.
+    """
+    now = time.localtime()
+    curr_year = now.tm_year
+    curr_month = now.tm_mon
+    
+    # Berechne vergangenen Monat
+    if curr_month == 1:
+        prev_year = curr_year - 1
+        prev_month = 12
+    else:
+        prev_year = curr_year
+        prev_month = curr_month - 1
+        
+    prev_month_str = f"{prev_year}-{str(prev_month).zfill(2)}"
+    
+    # Bereits generiert?
+    if state.get("last_report_month") == prev_month_str:
+        return
+        
+    log(f"\n[Haushaltsbericht] Generiere Bericht für {prev_month_str}...")
+    
+    # Dokumente holen
+    docs = []
+    page = 1
+    while True:
+        try:
+            data = api.get('/api/documents/', {'page': page, 'page_size': 100})
+            docs.extend(data.get('results', []))
+            if not data.get('next'):
+                break
+            page += 1
+        except Exception as e:
+            log(f"Fehler beim Laden der Dokumente für Haushaltsbericht: {e}")
+            return
+            
+    report_rows = []
+    total_amount = 0.0
+    category_totals = {}
+    
+    for doc in docs:
+        created = doc.get('created', '')
+        if not created or not created.startswith(prev_month_str):
+            continue
+            
+        title = doc.get('title', '')
+        corr_id = doc.get('correspondent')
+        corr_name = correspondent_map.get(corr_id, "Unbekannt") if corr_id else "Unbekannt"
+        
+        # Betrag aus Titel extrahieren
+        m = re.search(r'\(([\d.]+)\s*€\)', title)
+        amount = float(m.group(1)) if m else 0.0
+        
+        content = doc.get('content', '') or ''
+        category = detect_category(content)
+        
+        report_rows.append({
+            'date': created[:10],
+            'correspondent': corr_name,
+            'title': title,
+            'amount': amount,
+            'category': category
+        })
+        
+        total_amount += amount
+        category_totals[category] = category_totals.get(category, 0.0) + amount
+        
+    if not report_rows:
+        log(f"Keine Dokumente für den Monat {prev_month_str} gefunden. Überspringe Bericht.")
+        state["last_report_month"] = prev_month_str
+        return
+        
+    report_rows.sort(key=lambda x: x['date'])
+    
+    import tempfile
+    with tempfile.NamedTemporaryFile(suffix='.csv', mode='w', encoding='utf-8', delete=False) as tmp:
+        tmp.write("Datum;Händler;Titel;Betrag in EUR;Kategorie\n")
+        for row in report_rows:
+            tmp.write(f"{row['date']};{row['correspondent']};{row['title']};{row['amount']:.2f};{row['category']}\n")
+        
+        tmp.write("\nZUSAMMENFASSUNG\n")
+        tmp.write(f"Gesamtbetrag;{total_amount:.2f};EUR\n")
+        for cat, total in category_totals.items():
+            tmp.write(f"Kategorie: {cat};{total:.2f};EUR\n")
+            
+        tmp_path = tmp.name
+        
+    try:
+        tag_id = api.get_or_create_tag("Haushaltsbuch")
+        tag_ids = [tag_id] if tag_id else None
+        report_title = f"Haushaltsbericht {prev_month_str}"
+        
+        ok = api.upload_document(tmp_path, report_title, tag_ids)
+        if ok:
+            log(f"✓ Haushaltsbericht '{report_title}' erfolgreich hochgeladen.")
+            state["last_report_month"] = prev_month_str
+        else:
+            log("✗ Fehler beim Hochladen des Haushaltsberichts.")
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+def deduplicate_documents(api):
+    log("\nStarte Duplikaterkennung...")
+    docs = []
+    page = 1
+    while True:
+        try:
+            data = api.get('/api/documents/', {'page': page, 'page_size': 100})
+            docs.extend(data.get('results', []))
+            if not data.get('next'):
+                break
+            page += 1
+        except Exception as e:
+            log(f"Fehler beim Abrufen der Dokumente für Duplikaterkennung: {e}")
+            break
+            
+    seen = {}
+    for doc in docs:
+        doc_id = doc['id']
+        title = doc.get('title', '')
+        created = doc.get('created', '')
+        corr = doc.get('correspondent')
+        
+        if not created or not corr:
+            continue
+            
+        created_date = created[:10]
+        
+        m = re.search(r'\(([\d.]+)\s*€\)', title)
+        if not m:
+            continue
+        amount = m.group(1)
+        
+        key = (created_date, corr, amount)
+        if key not in seen:
+            seen[key] = []
+        seen[key].append(doc)
+        
+    for key, matching_docs in seen.items():
+        if len(matching_docs) > 1:
+            matching_docs.sort(key=lambda x: x['id'])
+            original = matching_docs[0]
+            duplicates = matching_docs[1:]
+            
+            created_date, corr, amount = key
+            log(f"  ⚠️ Duplikat(e) gefunden für: Datum={created_date}, Betrag={amount} €, Korrespondent_ID={corr}")
+            log(f"    Original: [{original['id']}] {original['title']}")
+            
+            for dup in duplicates:
+                dup_id = dup['id']
+                dup_title = dup['title']
+                if not dup_title.endswith(" (DUPLIKAT)"):
+                    new_title = f"{dup_title} (DUPLIKAT)"
+                    log(f"    -> Markiere Duplikat: [{dup_id}] '{dup_title}' -> '{new_title}'")
+                    api.patch_document(dup_id, {'title': new_title[:128]})
+
+
 # ── Haupt-Loop ─────────────────────────────────────────────────────────────────
 def run():
     with open(CONFIG_FILE) as f:
@@ -360,6 +592,19 @@ def run():
     # Manuelle Korrekturen aus UI erkennen
     log('\nPrüfe auf manuelle UI-Korrekturen...')
     check_for_manual_corrections(api, state, learned_db, correspondent_map)
+    
+    # Monatlichen Haushaltsbericht erzeugen
+    try:
+        check_and_generate_monthly_report(api, state, correspondent_map)
+    except Exception as e:
+        log(f"Fehler bei Haushaltsbericht-Erstellung: {e}")
+        
+    # Duplikaterkennung ausführen
+    try:
+        deduplicate_documents(api)
+    except Exception as e:
+        log(f"Fehler bei Duplikaterkennung: {e}")
+
     save_state(state)
 
     # Dokument-Typen sicherstellen
@@ -444,12 +689,7 @@ def run():
                 header = extract_header_name(text)
                 if header:
                     company = header
-                    learn_company(company, learned_db)
-                    log(f'    Header-Extraktion: "{company}"')
-
-            # Bekannte Firma lernen
-            if company:
-                learn_company(company, learned_db)
+                    log(f'    Header-Extraktion (nicht automatisch gelernt): "{company}"')
 
             corr_name = company or 'Unbekannter Korrespondent'
             corr_id   = api.get_or_create_correspondent(corr_name)
@@ -464,16 +704,7 @@ def run():
             elif dt_rechnung:
                 doc_type_id = dt_rechnung
 
-            # Tags
-            tag_ids = list(doc.get('tags', []))
-            for tag_name in ['Rechnung', 'Lebensmittel' if category == 'lebensmittel' else 'Sonstiges']:
-                tid = api.get_or_create_tag(tag_name)
-                if tid and tid not in tag_ids:
-                    tag_ids.append(tid)
-            if company:
-                tid = api.get_or_create_tag(company)
-                if tid and tid not in tag_ids:
-                    tag_ids.append(tid)
+            # Tags (Untouched as requested by user)
 
             # Titel
             new_title = title
@@ -488,8 +719,7 @@ def run():
                 payload['correspondent'] = corr_id
             if doc_type_id and doc.get('document_type') != doc_type_id:
                 payload['document_type'] = doc_type_id
-            if set(tag_ids) != set(doc.get('tags', [])):
-                payload['tags'] = list(set(tag_ids))
+            # payload['tags'] omitted to keep existing tags untouched
             if new_title != title:
                 payload['title'] = new_title[:128]
             if doc_date and not doc.get('created_date'):

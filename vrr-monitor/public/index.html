@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>VRR Live-Abfahrtsmonitor</title>
+  <meta name="description" content="Echtzeit-Abfahrtsmonitor für den Verkehrsverbund Rhein-Ruhr (VRR) mit Standortsuche, Autocomplete und Verspätungsanzeige.">
+  
+  <!-- PWA Manifest & iOS Standalone App Support -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="VRR Live">
+  <link rel="apple-touch-icon" href="icon.png">
+  
+  <!-- Modern Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="glow-container">
+    <div class="glow-sphere glow-sphere-1"></div>
+    <div class="glow-sphere glow-sphere-2"></div>
+  </div>
+
+  <div class="app-container">
+    <header class="app-header">
+      <div class="header-logo">
+        <div class="logo-icon">
+          <i data-lucide="train-front"></i>
+        </div>
+        <div class="logo-text">
+          <h1>VRR <span>Live-Monitor</span></h1>
+          <p>Echtzeit-Abfahrten im Rhein-Ruhr-Verkehrsnetz</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Search & Geolocation Section -->
+      <section class="search-section card">
+        <div class="search-wrapper">
+          <div class="search-input-container">
+            <i data-lucide="search" class="search-icon"></i>
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="Haltestelle suchen (z.B. Düsseldorf Hbf)..." 
+              autocomplete="off"
+              aria-label="Haltestelle suchen"
+            >
+            <button id="clear-search-btn" class="clear-btn" aria-label="Suche löschen" style="display: none;">
+              <i data-lucide="x"></i>
+            </button>
+            
+            <!-- Autocomplete suggestions dropdown -->
+            <div id="autocomplete-list" class="autocomplete-dropdown" style="display: none;"></div>
+          </div>
+          
+          <button id="locate-btn" class="action-btn locate-btn" title="Nächste Haltestelle per GPS ermitteln">
+            <i data-lucide="locate"></i>
+            <span>Standort abfragen</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Favorites Quick Select Bar -->
+      <section id="favorites-section" class="favorites-section card" style="display: none;">
+        <span class="favorites-label"><i data-lucide="star"></i> Favoriten:</span>
+        <div id="favorites-list" class="favorites-list">
+          <!-- Favorited pills will be injected dynamically -->
+        </div>
+      </section>
+
+      <!-- Active Stop Status Banner -->
+      <section id="active-stop-banner" class="stop-banner card" style="display: none;">
+        <div class="stop-info">
+          <div class="stop-icon">
+            <i data-lucide="map-pin"></i>
+          </div>
+          <div>
+            <div class="stop-title-row">
+              <h2 id="active-stop-name">--</h2>
+              <button id="favorite-toggle-btn" class="fav-toggle-btn" title="Zu Favoriten hinzufügen">
+                <i data-lucide="star" id="favorite-icon"></i>
+              </button>
+            </div>
+            <p id="active-stop-distance" class="stop-distance" style="display: none;"></p>
+          </div>
+        </div>
+        <button id="refresh-btn" class="refresh-btn" title="Abfahrten aktualisieren">
+          <i data-lucide="refresh-cw" id="refresh-icon"></i>
+          <span>Aktualisieren</span>
+        </button>
+      </section>
+
+      <!-- Departures Monitor Board -->
+      <section class="departures-section card">
+        <div class="section-header">
+          <h3><i data-lucide="clock"></i> Abfahrten</h3>
+          <span id="last-update" class="last-update">Noch keine Haltestelle gewählt</span>
+        </div>
+        
+        <!-- Transit Mode Filter Bar -->
+        <div id="transit-filter-bar" class="transit-filter-bar" style="display: none;">
+          <button class="filter-pill active" data-filter="all">Alle</button>
+          <button class="filter-pill" data-filter="train"><i data-lucide="train"></i> Züge</button>
+          <button class="filter-pill" data-filter="suburban"><i data-lucide="train-front"></i> S/U-Bahn</button>
+          <button class="filter-pill" data-filter="tram"><i data-lucide="tram"></i> Tram</button>
+          <button class="filter-pill" data-filter="bus"><i data-lucide="bus"></i> Bus</button>
+        </div>
+        
+        <!-- Loading Spinner / Skeletons -->
+        <div id="departures-loader" class="loader-container" style="display: none;">
+          <div class="shimmer-row"></div>
+          <div class="shimmer-row"></div>
+          <div class="shimmer-row"></div>
+          <div class="shimmer-row"></div>
+        </div>
+
+        <!-- Empty state placeholder -->
+        <div id="departures-empty" class="empty-state">
+          <i data-lucide="bus-front" class="empty-icon"></i>
+          <p>Wähle eine Haltestelle aus der Suche oder über die Standortabfrage, um Live-Abfahrten anzuzeigen.</p>
+        </div>
+
+        <!-- Departures list container -->
+        <div id="departures-list" class="departures-list" style="display: none;">
+          <!-- Items will be injected dynamically -->
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>&copy; 2026 VRR Live-Abfahrtsmonitor. Powered by <code>hafas-client</code>.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Initialize Lucide Icons on load
+    lucide.createIcons();
+
+    // Register PWA Service Worker for iOS installation support
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(reg => console.log('Service Worker registered!'))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>

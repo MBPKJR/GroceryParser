@@ -1,23 +1,27 @@
-version: '3.8'
-
 services:
-  groceryparser:
-    build: .
-    container_name: groceryparser
-    restart: always
-    volumes:
-      - ./config.json:/app/config.json
-      - ./data:/app/data
-    environment:
-      - TZ=Europe/Berlin
+  roster-to-ical:
+    build:
+      context: .
+      dockerfile: Dockerfile
 
-  enricher:
-    build: .
-    container_name: paperless_enricher
+    container_name: roster-to-ical
     restart: always
-    command: ["python", "paperless_enricher.py", "--daemon"]
+    ports:
+      - "8080:8080"
     volumes:
       - ./config.json:/app/config.json
-      - ./data:/app/data
+      - ./downloads:/app/downloads
+      - ./processed_rosters.json:/app/processed_rosters.json
+      - ./schedule.ics:/app/schedule.ics
     environment:
-      - TZ=Europe/Berlin
+      - PYTHONUNBUFFERED=1
+
+  vrr-monitor:
+    build:
+      context: ./vrr-monitor
+      dockerfile: Dockerfile
+    container_name: vrr-monitor
+    restart: always
+    ports:
+      - "3000:3000"
+

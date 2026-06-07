@@ -1,4 +1,6 @@
+pandas
+xlrd
+openpyxl
+icalendar
+flask
 requests
-pypdf
-beautifulsoup4
-paramiko

@@ -90,6 +90,11 @@ BLACKLIST = [
 ]
 
 
+import socket
+
+# Set global socket timeout to prevent indefinite hanging
+socket.setdefaulttimeout(30)
+
 def run():
     silent_log("=" * 50)
     silent_log("Historischer Paperless-Import gestartet")
@@ -113,18 +118,28 @@ def run():
 
         silent_log(f"\nKonto: {user}")
 
-        try:
-            mail = imaplib.IMAP4_SSL(server, port)
-            mail.login(user, password)
-            mail.select(folder)
-        except Exception as e:
-            silent_log(f"  Verbindungsfehler: {e}")
+        def connect_imap():
+            try:
+                m = imaplib.IMAP4_SSL(server, port, timeout=30)
+                m.login(user, password)
+                m.select(folder)
+                return m
+            except Exception as e:
+                silent_log(f"  Verbindungsfehler: {e}")
+                return None
+
+        mail = connect_imap()
+        if not mail:
             continue
 
-        status, data = mail.search(None, 'ALL')
-        if status != 'OK' or not data[0]:
-            silent_log("  Keine E-Mails gefunden.")
-            mail.logout()
+        try:
+            status, data = mail.search(None, 'ALL')
+            if status != 'OK' or not data[0]:
+                silent_log("  Keine E-Mails gefunden.")
+                mail.logout()
+                continue
+        except Exception as e:
+            silent_log(f"  Fehler bei Suche: {e}")
             continue
 
         all_nums = data[0].split()
@@ -140,7 +155,16 @@ def run():
 
             for num in chunk:
                 try:
-                    status, msg_data = mail.fetch(num, '(RFC822)')
+                    try:
+                        status, msg_data = mail.fetch(num, '(RFC822)')
+                    except (socket.error, imaplib.IMAP4.error, EOFError) as e:
+                        silent_log(f"    Verbindung verloren ({e}). Versuche Reconnect...")
+                        mail = connect_imap()
+                        if not mail:
+                            silent_log("    Reconnect fehlgeschlagen. Beende diesen Durchlauf.")
+                            sys.exit(1) # Let systemd restart
+                        status, msg_data = mail.fetch(num, '(RFC822)')
+
                     if status != 'OK':
                         continue
 

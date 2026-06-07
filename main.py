@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import time
+import datetime
 import traceback
 from email_client import EmailFetcher
 from parser import ReceiptParser
@@ -42,9 +43,94 @@ def load_config(config_path="config.json"):
     with open(config_path, "r") as f:
         return json.load(f)
 
+import socket
+import traceback
+
+# Set global socket timeout
+socket.setdefaulttimeout(30)
+
+def update_ha_health(ha_client, silent_log):
+    import subprocess
+    import shutil
+    
+    services = {
+        "groceryparser.service": "groceryparser_service",
+        "history_import.service": "history_import_service",
+        "paperless_enricher.service": "paperless_enricher_service"
+    }
+    
+    status_attrs = {}
+    all_healthy = True
+    
+    # 1. Check services
+    for svc_file, attr_name in services.items():
+        try:
+            r = subprocess.run(["systemctl", "is-active", svc_file], capture_output=True, text=True, timeout=5)
+            state = r.stdout.strip()
+            status_attrs[attr_name] = state
+            if state != "active":
+                all_healthy = False
+        except Exception as e:
+            silent_log(f"Error checking service {svc_file}: {e}")
+            status_attrs[attr_name] = "unknown"
+            all_healthy = False
+            
+    # 2. Gather resource stats
+    # Load Avg
+    try:
+        with open("/proc/loadavg", "r") as f:
+            load = f.read().strip().split()[:3]
+            load_avg = " ".join(load)
+    except Exception:
+        load_avg = "0.00 0.00 0.00"
+        
+    # RAM Usage
+    mem_used_pct = 0.0
+    try:
+        mem_total = 0
+        mem_avail = 0
+        with open("/proc/meminfo", "r") as f:
+            for line in f:
+                if line.startswith("MemTotal:"):
+                    mem_total = int(line.split()[1])
+                elif line.startswith("MemAvailable:"):
+                    mem_avail = int(line.split()[1])
+        if mem_total:
+            mem_used_pct = round(((mem_total - mem_avail) / mem_total) * 100, 1)
+    except Exception as e:
+        silent_log(f"Error reading RAM usage: {e}")
+        
+    # Disk Usage
+    disk_used_pct = 0.0
+    try:
+        usage = shutil.disk_usage("/")
+        disk_used_pct = round((usage.used / usage.total) * 100, 1)
+    except Exception as e:
+        silent_log(f"Error reading disk usage: {e}")
+        
+    # Assemble attributes
+    status_attrs.update({
+        "last_heartbeat": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "ram_usage_percent": mem_used_pct,
+        "disk_usage_percent": disk_used_pct,
+        "load_average": load_avg
+    })
+    
+    # State determination
+    if all_healthy:
+        state = "healthy"
+    else:
+        if status_attrs.get("groceryparser_service") != "active":
+            state = "critical"
+        else:
+            state = "warning"
+            
+    silent_log(f"Posting health update to HA. State: {state}, Stats: RAM={mem_used_pct}%, Disk={disk_used_pct}%, Load={load_avg}")
+    ha_client.update_health(state, status_attrs)
+
 def run_silent(config, daemon=False):
     def silent_log(msg):
-        print(msg)
+        print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {msg}", flush=True)
         
     fetcher = EmailFetcher(config, logger_callback=silent_log)
     parser = ReceiptParser()
@@ -52,8 +138,16 @@ def run_silent(config, daemon=False):
     paperless_client = PaperlessClient(config)
     
     while True:
-        import datetime
         current_month = datetime.datetime.now().strftime("%Y-%m")
+        silent_log(f"--- HEARTBEAT: GroceryParser Loop Start ({current_month}) ---")
+        
+        # Update Home Assistant Health Sensor
+        try:
+            update_ha_health(ha_client, silent_log)
+        except Exception as e:
+            silent_log(f"Error updating HA health: {e}")
+            
+        silent_log(f"CWD: {os.getcwd()}")
         
         # Check for monthly reset
         last_month_file = "last_month.txt"

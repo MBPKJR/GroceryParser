@@ -1,0 +1,16 @@
+{
+  "name": "VRR Live-Monitor",
+  "short_name": "VRR Live",
+  "description": "Echtzeit-Abfahrtsmonitor für den Verkehrsverbund Rhein-Ruhr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080c14",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

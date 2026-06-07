@@ -1,0 +1,16 @@
+{
+  "name": "vrr-live-monitor",
+  "version": "1.0.0",
+  "description": "Live departure monitor for VRR using hafas-client",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "hafas-client": "^6.3.6"
+  }
+}

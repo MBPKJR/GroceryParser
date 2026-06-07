@@ -74,3 +74,26 @@ class HomeAssistantClient:
                 print(f"[HomeAssistant] Failed to send notification: {response.status_code}")
         except Exception as e:
             print(f"[HomeAssistant] Exception sending notification: {e}")
+
+    def update_health(self, state="healthy", attributes=None):
+        """Updates the groceryparser health sensor in Home Assistant."""
+        entity_id = "sensor.groceryparser_health"
+        endpoint = f"{self.url}/api/states/{entity_id}"
+        
+        payload = {
+            "state": state,
+            "attributes": {
+                "friendly_name": "GroceryParser System Health",
+                "icon": "mdi:heart-pulse",
+                **(attributes or {})
+            }
+        }
+        try:
+            response = requests.post(endpoint, headers=self.headers, json=payload, timeout=10)
+            response.raise_for_status()
+            print(f"[HomeAssistant] Health status updated: {state}")
+            return True
+        except Exception as e:
+            print(f"[HomeAssistant] Error updating health status: {e}")
+            return False
+
